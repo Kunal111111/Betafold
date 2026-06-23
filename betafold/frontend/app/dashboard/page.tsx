@@ -290,7 +290,7 @@ export default function Dashboard() {
                 <div style={{ width: 1, height: 32, background: 'var(--border)' }}></div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Proteins in DB</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent3)' }}>{tickerCount.toLocaleString()}</div>
+                  <div suppressHydrationWarning style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent3)' }}>{tickerCount.toLocaleString('en-US')}</div>
                 </div>
               </div>
             </div>

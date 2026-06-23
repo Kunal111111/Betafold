@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -10,7 +10,31 @@ const EXAMPLE = 'MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALP
 export default function Predict() {
   const [sequence, setSequence] = useState('')
   const [loading, setLoading] = useState(false)
+  const [ocrLoading, setOcrLoading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+
+  const handleImageUpload = async (e: any) => {
+    const file = e.target.files[0]
+    if (!file) return
+    
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    setOcrLoading(true)
+    try {
+      const res = await api.post('/jobs/ocr', formData)
+      if (res.data.sequence) {
+        setSequence(res.data.sequence)
+        toast.success("Sequence extracted successfully from image!")
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || "Failed to extract text from image")
+    } finally {
+      setOcrLoading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
 
   const submit = async () => {
     const clean = sequence.replace(/\s/g, '').toUpperCase()
@@ -44,7 +68,19 @@ export default function Predict() {
         <p style={{ color: 'var(--muted)', marginBottom: 32 }}>Paste your amino acid sequence below. Single-letter codes only.</p>
 
         <div className="glass" style={{ padding: 32 }}>
-          <label style={{ display: 'block', marginBottom: 10, fontWeight: 600 }}>Protein Sequence</label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <label style={{ fontWeight: 600 }}>Protein Sequence</label>
+            <div>
+              <input type="file" ref={fileInputRef} accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
+              <button 
+                onClick={() => fileInputRef.current?.click()} 
+                disabled={ocrLoading}
+                className="btn-secondary"
+                style={{ padding: '6px 12px', borderRadius: 6, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(99,102,241,0.1)', border: '1px solid var(--border)' }}>
+                {ocrLoading ? '⏳ Scanning...' : '📷 OCR Scan Image'}
+              </button>
+            </div>
+          </div>
           <textarea value={sequence} onChange={e => setSequence(e.target.value)}
             placeholder="Enter amino acid sequence (e.g. MKTAYIAKQR...)"
             rows={8}

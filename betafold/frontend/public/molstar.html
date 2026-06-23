@@ -4,33 +4,45 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/pdbe-molstar@3.1.2/build/pdbe-molstar-light.css">
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/pdbe-molstar@3.1.2/build/pdbe-molstar-plugin.js"></script>
   <style>
     * { margin: 0; padding: 0; }
     html, body { width: 100%; height: 100%; overflow: hidden; background-color: #0b0f19; }
-    #viewer { width: 100%; height: 100%; position: relative; }
+    #viewer { width: 100%; height: 100%; position: absolute; left: 0; top: 0; }
   </style>
 </head>
 <body>
   <div id="viewer"></div>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/pdbe-molstar@3.1.2/build/pdbe-molstar-plugin.js" onload="init()"></script>
   <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const pdbId = urlParams.get('pdb');
-    
-    if (pdbId) {
-      // Extremely robust wait-loop in case the CDN is slow to load
-      const wait = setInterval(() => {
-        if (window.PDBeMolstarPlugin) {
-            clearInterval(wait);
-            const viewerInstance = new window.PDBeMolstarPlugin();
+    function init() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const pdbId = urlParams.get('pdb');
+        
+        if (pdbId) {
+            const viewerInstance = new PDBeMolstarPlugin();
             const options = {
               moleculeId: pdbId.toLowerCase(),
               hideControls: true, 
-              hideExpandIcon: true
+              hideExpandIcon: true,
+              bgColor: {r: 11, g: 15, b: 25}
             };
             viewerInstance.render(document.getElementById('viewer'), options);
+            
+            window.addEventListener('message', (event) => {
+               const action = event.data;
+               if (action && action.command === 'highlight') {
+                   viewerInstance.visual.clearSelection();
+                   viewerInstance.visual.select({
+                       data: [{
+                           start_residue_number: action.start_residue,
+                           end_residue_number: action.end_residue,
+                           color: action.color || { r: 255, g: 0, b: 0 },
+                           focus: true
+                       }]
+                   });
+               }
+            });
         }
-      }, 100);
     }
   </script>
 </body>

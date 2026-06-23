@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -95,6 +95,11 @@ def chat_with_ai(req: ChatRequest, current_user=Depends(get_current_user)):
     User Question: {user_question}
     
     Answer the user's question clearly and concisely. Reference the structural metadata where relevant.
+    
+    CRITICAL: If the user asks you to modify, highlight, or focus on a specific piece of the 3D structure, you MUST output a JSON action block.
+    Format your action block exactly like this on a new line anywhere in your response:
+    [ACTION: {{"command": "highlight", "start_residue": 45, "end_residue": 45, "color": {{"r":255,"g":0,"b":0}}}}]
+    You can change the residue numbers to match whatever feature they ask about.
     """
     
     from dotenv import load_dotenv
@@ -113,6 +118,36 @@ def chat_with_ai(req: ChatRequest, current_user=Depends(get_current_user)):
         return {
             "reply": "BetaFold AI is currently in simulation mode (No `GEMINI_API_KEY` provided). Keep in mind that a hydrophobic core usually dictates rapid folding! Add your Gemini API key to `.env` to enable live conversational intelligence."
         }
+
+@app.post("/jobs/ocr")
+async def extract_sequence(file: UploadFile = File(...)):
+    try:
+        import io
+        from dotenv import load_dotenv
+        load_dotenv(override=True)
+        import os
+        import google.generativeai as genai
+
+        GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+        if not GEMINI_API_KEY:
+             raise HTTPException(status_code=500, detail="No Gemini API Key found")
+        
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        
+        contents = await file.read()
+        image_parts = {
+            "mime_type": file.content_type if file.content_type else "image/jpeg",
+            "data": contents
+        }
+        
+        prompt = "Extract only the raw 1-letter amino acid sequence from this image. Ignore all other text, numbering, spaces, and line breaks. Return ONLY the uppercase string of letters (like MKTAYIAK), nothing else."
+        response = model.generate_content([prompt, image_parts])
+        
+        clean_seq = "".join(response.text.split()).upper()
+        return {"sequence": clean_seq}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"OCR Error: {str(e)}")
 
 # Fix missing import
 from database import SessionLocal

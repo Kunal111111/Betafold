@@ -23,7 +23,24 @@ export default function AIChat({ context }: Props) {
         messages: newMessages,
         context: context
       })
-      setMessages([...newMessages, { role: 'assistant', content: res.data.reply }])
+      
+      let replyText = res.data.reply
+      
+      // Look for [ACTION: {...}]
+      const actionMatch = replyText.match(/\[ACTION:\s*({[\s\S]*?})\s*\]/i);
+      if (actionMatch) {
+         try {
+             const actionJson = JSON.parse(actionMatch[1]);
+             // Dispatch event to reach MolstarViewer
+             window.dispatchEvent(new CustomEvent('molstar-action', { detail: actionJson }));
+             // Remove the action block from chat
+             replyText = replyText.replace(actionMatch[0], '').trim();
+         } catch(e) {
+             console.error("Failed to parse AI action code", e);
+         }
+      }
+      
+      setMessages([...newMessages, { role: 'assistant', content: replyText }])
     } catch(e: any) {
       const errMsg = e.response?.data?.detail || 'Connection error contacting AI engine.'
       setMessages([...newMessages, { role: 'assistant', content: errMsg }])

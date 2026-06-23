@@ -15,7 +15,8 @@ export default function Results() {
   const router = useRouter()
   const [job, setJob] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'2d'|'analysis'|'mutations'|'metadata'>('2d')
+  const [activeTab, setActiveTab] = useState<'2d'|'3d'|'analysis'|'chat'|'mutations'|'metadata'>('2d')
+  const [showCopilot, setShowCopilot] = useState(false)
   const pollRef = useRef<any>(null)
 
   useEffect(() => {
@@ -87,18 +88,38 @@ export default function Results() {
         ) : (
           <>
             {/* Tabs */}
-            <div style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
-              {tabs.map(t => (
-                <button key={t.id} onClick={() => setActiveTab(t.id as any)}
-                  style={{ padding: '10px 20px', border: 'none', background: 'none', color: activeTab === t.id ? 'var(--accent)' : 'var(--muted)', borderBottom: activeTab === t.id ? '2px solid var(--accent)' : '2px solid transparent', cursor: 'pointer', fontWeight: activeTab === t.id ? 600 : 400, fontSize: 14, transition: 'all 0.2s' }}>
-                  {t.label}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24, borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', gap: 4, paddingBottom: 0 }}>
+                {tabs.map(t => (
+                  <button key={t.id} onClick={() => setActiveTab(t.id as any)}
+                    style={{ padding: '10px 20px', border: 'none', background: 'none', color: activeTab === t.id ? 'var(--accent)' : 'var(--muted)', borderBottom: activeTab === t.id ? '2px solid var(--accent)' : '2px solid transparent', cursor: 'pointer', fontWeight: activeTab === t.id ? 600 : 400, fontSize: 14, transition: 'all 0.2s' }}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+              {activeTab === '3d' && (
+                <button 
+                  onClick={() => setShowCopilot(!showCopilot)} 
+                  className={showCopilot ? 'btn-secondary' : 'btn-primary'}
+                  style={{ marginBottom: 12, padding: '8px 16px', borderRadius: 8, fontSize: 14 }}
+                >
+                  {showCopilot ? 'Hide AI Support' : '✨ Enable AI Support'}
                 </button>
-              ))}
+              )}
             </div>
 
             {/* Tab content */}
             {activeTab === '2d' && <SecondaryStructureViewer data={job.analysis} sequence={job.sequence} />}
-            {activeTab === '3d' && <MolstarViewer pdbId={job.analysis?.pdb_id} />}
+            {activeTab === '3d' && (
+              <div style={{ display: 'grid', gridTemplateColumns: showCopilot ? '2fr 1.2fr' : '1fr', gap: 24, alignItems: 'start', transition: 'all 0.3s ease' }}>
+                <MolstarViewer pdbId={job.analysis?.pdb_id} />
+                {showCopilot && (
+                  <div style={{ animation: 'fadeIn 0.5s ease-in-out' }}>
+                    <AIChat context={job} />
+                  </div>
+                )}
+              </div>
+            )}
             {activeTab === 'analysis' && <AnalysisPanel data={job.analysis} />}
             {activeTab === 'chat' && <AIChat context={job} />}
             {activeTab === 'mutations' && <MutationPanel data={job.analysis} sequence={job.sequence} />}
